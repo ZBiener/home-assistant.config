@@ -104,7 +104,7 @@ views:
               name: "Downstairs"
               icon: none
               type: "custom:secondaryinfo-entity-row"
-              secondary_info: "[[ sensor.downstairs_relative_time_since_last_run ]] ago"
+              secondary_info: "[[ sensor.downstairs_human_readable_time_since_last_run ]] ago"
             padding: 20
             entities:
               - entity: input_number.downstairs_days_between_vacuuming
@@ -131,7 +131,7 @@ views:
               name: "Upstairs"
               icon: none
               type: "custom:secondaryinfo-entity-row"
-              secondary_info: "[[ sensor.upstairs_vacuum_relative_time_since_last_run ]] ago"
+              secondary_info: "[[ sensor.upstairs_human_readable_time_since_last_run ]] ago"
               padding: 20
             entities:
               - entity: input_number.upstairs_days_between_vacuuming
