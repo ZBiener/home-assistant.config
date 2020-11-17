@@ -1,5 +1,12 @@
 This repository contains configuration files for a Home Assistant installation on a RaspberryPi 3B, running Hassio operating system. 
 
+Basic functionality includes:
++ Geolocation of two phones
++ Periodic running of robot vacuums, when no one is home or at specified times
++ Motion and door sensor alerts, converted from radio frequency signals
++ 'Feed' tracking of changes in the above entities
++ Main settings (vacuum periods, alerts on motion, etc.) are user configurable.
+
 The config depends on:
 + A basic installation of Hassio
 + The following add-ons:
@@ -19,3 +26,7 @@ The config depends on:
   + card-tools
   + secondaryinfo entity row
   + loveland home feed card
+
+
+![Home Assistant GUI](http://zbiener.github.io/images/vacuum0.jpg){ width=65% }
+![Vacuum GUI3](http://zbiener.github.io//images/vacuum3.jpg){:width="35%"}
