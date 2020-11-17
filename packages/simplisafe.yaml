@@ -1,0 +1,211 @@
+########################################################################
+### Simplisafe
+########################################################################
+# Reading simplisafe sensors made possible through the RTL_433 to MQTT Bridge.
+# The add-on settings;
+# {
+#   "mqtt_host": "10.1.10.136",
+#   "mqtt_user": "MQTT_User",
+#   "mqtt_password": "xxx",
+#   "mqtt_topic": "homeassistant/sensor/rf/",
+#   "protocol": 102,
+#   "frequency": 433920000,
+#   "gain": 60,
+#   "frequency_offset": 0
+# }
+#
+# The short antenna is best.
+
+# Inputs
+########################################################################
+input_boolean:
+  alarm_when_away:
+    name: Send alarm notifications?
+
+# MQTT Sensors
+########################################################################
+
+binary_sensor:
+  - platform: mqtt
+    name: "39ja6"
+    state_topic: "dummy/39ja6"
+    device_class: garage_door
+
+  - platform: mqtt
+    name: "1r96d"
+    state_topic: "dummy/1r96d"
+    device_class: motion
+
+  - platform: mqtt
+    name: "1r64a"
+    state_topic: "dummy/1r64a"
+    device_class: motion
+      
+  - platform: mqtt
+    name: "1r8rq"
+    state_topic: "dummy/1r8rq"
+    device_class: motion
+
+  - platform: mqtt
+    name: "39mvn"
+    state_topic: "dummy/39mvn"
+    device_class: door
+
+  - platform: mqtt
+    name: "39wkr"
+    state_topic: "dummy/39wkr"
+    device_class: door
+
+  - platform: mqtt
+    name: "39n1c"
+    state_topic: "dummy/39n1c"
+    device_class: door
+
+  - platform: mqtt
+    name: "39vqk"
+    state_topic: "dummy/39vqk"
+    device_class: door
+
+  - platform: mqtt
+    name: "3a8e1"
+    state_topic: "dummy/3a8e1"
+    device_class: window
+
+sensor:
+  - platform: mqtt
+    name: mqtt_general
+    state_topic: "homeassistant/sensor/rf/SimpliSafe-Sensor/#"
+
+# Scripts
+########################################################################
+script:
+  alarm_when_away: 
+    sequence:
+      - condition: state
+        entity_id: input_boolean.alarm_when_away
+        state: 'on'
+      - service: notify.notify
+        data:
+          message: >
+            {{ state_attr(id, 'friendly_name') }} motion  
+    
+    
+    
+
+# Automation
+########################################################################
+automation:
+- alias: Update-entry-sensors-to-on
+  trigger:
+    platform: mqtt
+    topic: "homeassistant/sensor/rf/SimpliSafe-Sensor/#"
+  condition:
+    condition: and
+    conditions:
+      - condition: template
+        value_template: >-
+           {{ (trigger.payload_json.id|lower == "39ja6") or
+              (trigger.payload_json.id|lower == "39mvn") or
+              (trigger.payload_json.id|lower == "39wkr") or
+              (trigger.payload_json.id|lower == "39n1c") or
+              (trigger.payload_json.id|lower == "1r96d") or
+              (trigger.payload_json.id|lower == "3a8e1") }}
+      - condition: template
+        value_template: '{{ trigger.payload_json.state == 1 }}'
+  action:
+    - service: python_script.set_state
+      data_template:
+        entity_id: "binary_sensor.{{ trigger.payload_json.id|lower}}"
+        state: "on"
+    - service: script.alarm_when_away
+      data:
+        id: binary_sensor.{{ trigger.payload_json.id|lower}}
+
+- alias: Update-entry-sensors-to-off
+  trigger:
+    platform: mqtt
+    topic: "homeassistant/sensor/rf/SimpliSafe-Sensor/#"
+  condition:
+    condition: and
+    conditions:
+      - condition: template
+        value_template: >-
+           {{ (trigger.payload_json.id|lower == "39ja6") or
+              (trigger.payload_json.id|lower == "39mvn") or
+              (trigger.payload_json.id|lower == "39wkr") or
+              (trigger.payload_json.id|lower == "39n1c") or
+              (trigger.payload_json.id|lower == "1r96d") or
+              (trigger.payload_json.id|lower == "3a8e1") }}
+      - condition: template
+        value_template: '{{ trigger.payload_json.state == 2 }}'
+  action:
+    - service: python_script.set_state
+      data_template:
+        entity_id: "binary_sensor.{{ trigger.payload_json.id|lower}}"
+        state: "off"
+    
+
+- alias: Update-motion-sensors-to-on
+  trigger:
+    platform: mqtt
+    topic: "homeassistant/sensor/rf/SimpliSafe-Sensor/#"
+  condition:
+    condition: and
+    conditions:
+      - condition: template
+        value_template: >-
+           {{ (trigger.payload_json.id|lower == "1r96d") or
+              (trigger.payload_json.id|lower == "1r8rq") or
+              (trigger.payload_json.id|lower == "1r64a") }}
+      - condition: template
+        value_template: '{{ trigger.payload_json.state == 2 }}'
+  action:
+    - service: python_script.set_state
+      data_template:
+        entity_id: "binary_sensor.{{ trigger.payload_json.id|lower}}"
+        state: "on"
+    - service: script.alarm_when_away
+      data:
+        id: binary_sensor.{{ trigger.payload_json.id|lower}}
+
+
+- alias: reset_motion_sensors
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.1r96d
+      to: 'on'
+      for:
+        seconds: 319
+    - platform: state
+      entity_id: binary_sensor.1r8rq
+      to: 'on'
+      for:
+        seconds: 319
+    - platform: state
+      entity_id: binary_sensor.1r64a
+      to: 'on'
+      for:
+        seconds: 319
+  action:
+    service: python_script.set_state
+    data_template:
+      entity_id: "{{ trigger.entity_id }}"
+      state: "off"
+
+### rtl433 used to crash periodically. This restarted it. Problem seems to be solved with later version, and with better internal hassio monitoring of processes.
+#- alias: reset_rtl_433_addon #it gets stuck
+#  trigger:
+#    - platform: time_pattern
+#      minutes: '/5'
+#      seconds: 00
+#  condition:
+#    condition: template
+#    value_template: '{{ ((as_timestamp(now()) - as_timestamp(states.sensor.mqtt_general.last_changed) | default(0)) | int) >= 180 }}'
+#  action:
+#    - service: notify.notify
+#      data:
+#        message: "Restarting 433"
+#   - service: hassio.addon_restart
+#      data:
+#        addon: "f3248fb7_rtl4332mqtt"
+

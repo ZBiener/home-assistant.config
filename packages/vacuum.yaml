@@ -1,0 +1,522 @@
+########################################################################
+### Vacuum
+########################################################################
+# 
+#  Examples of json entry for manual Services
+#
+#  {
+#    "entity_id": "vacuum.downstairs_vacuum",
+#    "command": "app_goto_target",
+#    "params": [16000, 27000]
+#  }
+#  
+#  {
+#    "entity_id": "vacuum.downstairs_vacuum",
+#    "zone": [[19800, 23000,20200, 23400]],
+#    "repeats": 1
+#  
+#  }
+vacuum:
+  - platform: xiaomi_miio
+    host: !secret xiaomi_downstairs_internal_ip
+    token: !secret xiaomi_downstairs_vacuum_token
+    name: downstairs_vacuum
+
+  - platform: xiaomi_miio
+    host: !secret xiaomi_upstairs_internal_ip
+    token: !secret xiaomi_upstairs_vacuum_token
+    name: upstairs_vacuum
+
+
+### Sensors
+########################################################################
+sensor:
+  - platform: template
+    sensors:
+      downstairs_seconds_since_last_run:
+        value_template: >-
+          {{ as_timestamp(strptime(states.sensor.date_time.state, "%Y-%m-%d, %H:%M"))  - (as_timestamp(states('input_datetime.downstairs_vacuum_last_runtime')) | int) }}
+
+      upstairs_seconds_since_last_run:
+        value_template: >-
+          {{ as_timestamp(strptime(states.sensor.date_time.state, "%Y-%m-%d, %H:%M")) - (as_timestamp(states('input_datetime.upstairs_vacuum_last_runtime')) | int) }}
+
+      downstairs_human_readable_time_since_last_run:
+        friendly_name: 'Last Ran'
+        value_template: >-
+          {% set time = (states('sensor.downstairs_seconds_since_last_run') | int) | int %}
+          {% set minutes = ((time % 3600) / 60) | int %}
+          {% set hours = ((time % 86400) / 3600) | int %}
+          {% set days = (time / 86400) | int %}
+          {%- if time < 3600 -%}
+            Less than an hour 
+          {%- else -%}
+            {%- if days > 0 -%}
+              {%- if days == 1 -%}
+                1 day 
+              {%- else -%}
+                {{ days }} days 
+              {%- endif -%}
+            {%- endif -%}
+            {%- if hours > 0 -%}
+              {%- if days > 0 -%}
+                {{ ', ' }}
+              {%- endif -%}
+              {%- if hours == 1 -%}
+                1 hour 
+              {%- else -%}
+                {{ hours }} hours 
+              {%- endif -%}
+            {%- endif -%}     
+          {%- endif -%}
+
+      upstairs_human_readable_time_since_last_run:
+        friendly_name: 'Last ran'
+        value_template: >-
+          {% set time = (states('sensor.upstairs_seconds_since_last_run') | int) | int %}
+          {% set minutes = ((time % 3600) / 60) | int %}
+          {% set hours = ((time % 86400) / 3600) | int %}
+          {% set days = (time / 86400) | int %}
+          {%- if time < 3600 -%}
+            Less than an hour 
+          {%- else -%}
+            {%- if days > 0 -%}
+              {%- if days == 1 -%}
+                1 day 
+              {%- else -%}
+                {{ days }} days 
+              {%- endif -%}
+            {%- endif -%}
+            {%- if hours > 0 -%}
+              {%- if days > 0 -%}
+                {{ ', ' }}
+              {%- endif -%}
+              {%- if hours == 1 -%}
+                1 hour 
+              {%- else -%}
+                {{ hours }} hours 
+              {%- endif -%}
+            {%- endif -%}     
+          {%- endif -%} 
+
+binary_sensor:
+  - platform: template
+    sensors:
+      downstairs_ok_to_run_again:
+        value_template: "{{  (states('sensor.downstairs_seconds_since_last_run') | int / 84600)  | round (0) >= states('input_number.downstairs_days_between_vacuuming') | int }}"
+      upstairs_ok_to_run_again:
+        value_template: "{{ (states('sensor.upstairs_seconds_since_last_run')  | int / 84600) | round (0) >= states('input_number.upstairs_days_between_vacuuming') | int }}"
+
+### Input Variables
+########################################################################
+
+input_select:
+  vacuum_room:
+    name: Choose a room to vacuum
+    icon: mdi:broom
+    options:
+      - "-"
+      - Entire 1st floor
+      - Entire 2nd floor
+      - Kitchen
+      - Bedroom
+      - Upstairs bathroom
+      - Downstairs bedroom
+      - Living room
+      - Upstairs office
+      - Upstairs hallway
+
+input_number:
+  downstairs_days_between_vacuuming:
+    initial: 2
+    name: 'Select days between scheduled vacuum runs:'
+    min: 1
+    max: 7
+    step: 1
+    mode: box
+
+  upstairs_days_between_vacuuming:
+    initial: 2
+    name: 'Select days between scheduled vacuum runs:'
+    min: 1
+    max: 7
+    step: 1
+    mode: box
+
+  number_of_vacuum_passes:
+    initial: 1
+    name: 'Select number of vacuum passes:'
+    min: 1
+    max: 3
+    initial: 2
+    mode: slider
+
+
+input_datetime:
+  downstairs_vacuum_scheduled_runtime:
+    name: 'Select time of day for scheduled run:'
+    has_time: true
+  upstairs_vacuum_scheduled_runtime:
+    name: 'Select time of day for scheduled run:'
+    has_time: true
+  downstairs_vacuum_last_runtime:
+    name: 'downstairs last vacuum run'
+    has_time: true
+    has_date: true
+  upstairs_vacuum_last_runtime:
+    name: 'upstairs last vacuum run'
+    has_time: true
+    has_date: true
+
+input_boolean:
+  vacuum_when_away:
+    name: Vacuum when no one's home?
+
+### Counters
+########################################################################
+counter:
+  upstairs_vacuum_run_counter:
+    name: "Runs since the dust bin was emptied:"
+    restore: true
+  downstairs_vacuum_run_counter:
+    name: "Runs since the dust bin was emptied:"
+    restore: true
+
+
+
+### Scripts
+########################################################################
+
+script:
+  vacuum_living_room:
+    alias: Vacuum Living Room
+    sequence:
+    - data:
+        entity_id: vacuum.downstairs_vacuum
+        repeats: 2
+        zone:
+        - - 22960 
+          - 25200 
+          - 27960 
+          - 29100
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_kitchen:
+    alias: Vacuum Kitchen
+    sequence:
+    - data:
+        entity_id: vacuum.downstairs_vacuum
+        repeats: 2
+        zone:
+        - - 18660 
+          - 28000 
+          - 24010 
+          - 33000
+        - - 24010 
+          - 29700 
+          - 25410 
+          - 33000
+      service: xiaomi_miio.vacuum_clean_zone
+
+  mop_kitchen:
+    alias: Vacuum Kitchen
+    sequence:
+    - data:
+        entity_id: vacuum.downstairs_vacuum
+        repeats: 1
+        zone:
+        - - 20600
+          - 28000
+          - 24010
+          - 33000
+        - - 18660
+          - 28000
+          - 23010
+          - 29300
+        - - 24010 
+          - 29700 
+          - 25410 
+          - 33000
+      service: xiaomi_miio.vacuum_clean_zone
+
+  vacuum_kitchen_living_room:
+    alias: Vacuum Kitchen & Living Room
+    sequence:
+    - data:
+        entity_id: vacuum.downstairs_vacuum
+        repeats: 2
+        zone:
+        - - 22960 
+          - 25200 
+          - 27960 
+          - 29100
+        - - 18660 
+          - 28500 
+          - 24010 
+          - 33000
+        - - 24010 
+          - 29700 
+          - 25410 
+          - 33000
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_front_room:
+    alias: Vacuum Front Room
+    sequence:
+    - data:
+        entity_id: vacuum.downstairs_vacuum
+        repeats: 1
+        zone:
+        - - 27960 
+          - 25900 
+          - 34160 
+          - 29700
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_downstairs_hallway:
+    alias: Vacuum Downstairs Hallway
+    sequence:
+    - data:
+        entity_id: vacuum.downstairs_vacuum
+        repeats: 2
+        zone:
+        - - 26060 
+          - 28800 
+          - 28260 
+          - 32200
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_goto_downstairs_bin:
+    alias: Send vacuum to downstairs trashcan 
+    sequence:
+    - data: 
+        entity_id: vacuum.downstairs_vacuum
+        command: app_goto_target
+        params: [23360, 30500]
+      service: vacuum.send_command
+  
+  vacuum_bedroom:
+    alias: Vacuum Bedroom
+    sequence:
+    - data:
+        entity_id: vacuum.upstairs_vacuum
+        repeats: 1
+        zone:
+        - - 24700
+          - 25000
+          - 36000
+          - 28400
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_upstairs_hallway:
+    alias: Vacuum Upstairs Hallway
+    sequence:
+    - data:
+        entity_id: vacuum.upstairs_vacuum
+        repeats: 1
+        zone:
+        - - 31000
+          - 23400
+          - 36000
+          - 25200
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_upstairs_bathroom:
+    alias: Vacuum Upstairs Bathroom
+    sequence:
+    - data:
+        entity_id: vacuum.upstairs_vacuum
+        repeats: 2
+        zone:
+        - - 28500
+          - 21000
+          - 32700
+          - 23350
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_upstairs_litter:
+    alias: Vacuum Upstairs Litter
+    sequence:
+    - data:
+        entity_id: vacuum.upstairs_vacuum
+        repeats: 3
+        zone:
+        - - 28500
+          - 21000
+          - 30400
+          - 23350
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_upstairs_office:
+    alias: Vacuum Upstairs Office
+    sequence:
+    - data:
+        entity_id: vacuum.upstairs_vacuum
+        repeats: 2
+        zone:
+        - - 32800
+          - 21000
+          - 36000
+          - 23350
+      service: xiaomi_miio.vacuum_clean_zone
+  
+  vacuum_goto_upstairs_bin:
+    alias: Send vacuum to upstairs trashcan
+    sequence:
+    - data: 
+        entity_id: vacuum.upstairs_vacuum
+        command: app_goto_target
+        params: [29500, 22500]
+      service: vacuum.send_command
+      
+  vacuum_dock_and_reset_counter:
+    alias: Return vacuum to dock and reset counter
+    sequence:
+    - service: vacuum.dock
+    - service: counter.reset
+      data:
+        entity_id: counter.
+    
+  vacuum_downstairs:
+    alias: Vacuum downstairs
+    sequence:
+    - service: notify.notify
+      data_template:
+        message: >
+          Downstairs last vacuumed on {{ states("input_datetime.downstairs_vacuum_last_runtime") }}. Vacuuming again now.
+    - service: vacuum.start
+      entity_id: vacuum.downstairs_vacuum
+    - service: counter.increment
+      entity_id: counter.downstairs_vacuum_run_counter
+    - service: input_datetime.set_datetime
+      entity_id: input_datetime.downstairs_vacuum_last_runtime
+      data_template:
+        datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"  
+          
+  vacuum_upstairs:
+    alias: Vacuum upstairs
+    sequence:
+    - service: notify.notify
+      data_template:
+        message: >
+          Upstairs last vacuumed on  {{ states("input_datetime.upstairs_vacuum_last_runtime") }}. Vacuuming again now.
+    - service: vacuum.start
+      entity_id: vacuum.upstairs_vacuum
+    - service: counter.increment
+      entity_id: counter.upstairs_vacuum_run_counter
+    - service: input_datetime.set_datetime
+      entity_id: input_datetime.upstairs_vacuum_last_runtime
+      data_template:
+        datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"  
+  
+### Automations
+########################################################################
+
+automation:
+- alias: Vacuum downstairs at scheduled time or when away
+  trigger:
+    - platform: template
+      # if it is downstairs scheduled time
+      value_template: >-
+        {{ states('sensor.time') == state_attr('input_datetime.downstairs_vacuum_scheduled_runtime', 'timestamp') | int | timestamp_custom('%H:%M', False) }}
+    - platform: template
+      # if it on the half-hour and we are not home
+      value_template: "{{ (states('sensor.time') | regex_match('.*30') or states('sensor.time') | regex_match('.*00')) and (not is_state('person.zvi', 'home')) and (not is_state('person.kate', 'home')) }}"
+  condition: 
+    condition: template
+    value_template: "{{ is_state('binary_sensor.downstairs_ok_to_run_again', 'on') }}"
+  action:
+    service: script.vacuum_downstairs
+    
+
+- alias: Vacuum upstairs at scheduled time or when away
+  trigger:
+    - platform: template
+      # if it is  upstairs scheduled time
+      value_template: "{{ states('sensor.time') == state_attr('input_datetime.upstairs_vacuum_scheduled_runtime', 'timestamp') | int | timestamp_custom('%H:%M', False) }}"
+    - platform: template
+      # if it on the half-hour and we are not home
+      value_template: "{{ (states('sensor.time') | regex_match('.*05') or states('sensor.time') | regex_match('.*35')) and (not is_state('person.zvi', 'home')) and (not is_state('person.kate', 'home')) }}"
+  condition: 
+    condition: template
+    value_template: "{{ is_state('binary_sensor.upstairs_ok_to_run_again', 'on') }}"
+  action:
+    service: script.vacuum_upstairs
+
+
+- alias: Vacuum upstairs litter on schedule, if no recent vacuum run
+  trigger:
+  - platform: template
+    value_template: "{{ states('sensor.time') == '12:30' }}"
+  condition:
+    condition: state
+    entity_id: vacuum.upstairs_vacuum
+    state: 'docked'
+  action:
+    service: script.vacuum_upstairs_litter
+
+- alias: Send vaccuum to downstairs trashcan after vacuuming x times
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == '08:00' }}"
+  condition: 
+    condition: template
+    value_template: "{{ states('counter.downstairs_vacuum_run_counter') | int >= 3 | int }}"
+  action:
+    - service: script.vacuum_goto_downstairs_bin
+    - service: counter.reset
+      entity_id: counter.downstairs_vacuum_run_counter
+
+    
+- alias: Send vaccuum to upstairs trashcan after vacuuming x times
+  trigger:
+    platform: template
+    value_template: "{{ states('sensor.time') == '20:00' }}"
+  condition: 
+    condition: template
+    value_template: "{{ states('counter.upstairs_vacuum_run_counter') | int >= 3 | int }}"
+  action:
+    - service: script.vacuum_goto_upstairs_bin
+    - service: counter.reset
+      entity_id: counter.upstairs_vacuum_run_counter
+
+
+- alias: Select room to vacuum
+  trigger:
+    platform: state
+    entity_id: input_select.vacuum_room
+    from: "-"
+  action: 
+   - service: notify.notify
+     data:
+       message: "Vacuum is starting"
+   - service: script.turn_on
+     data_template:
+       entity_id: >
+         {% if is_state('input_select.vacuum_room', 'Kitchen') %}
+            script.vacuum_kitchen
+         {% elif is_state('input_select.vacuum_room', 'Living room') %}
+            script.vacuum_living_room
+         {% elif is_state('input_select.vacuum_room', "Downstairs bedroom") %}
+             script.vacuum_front_room
+         {% elif is_state('input_select.vacuum_room', 'Downstairs bathroom') %}
+             script.vacuum_downstairs_hallway
+          {% elif is_state('input_select.vacuum_room', 'Bedroom') %}
+             script.vacuum_bedroom
+          {% elif is_state('input_select.vacuum_room', 'Upstairs hallway') %}
+             script.vacuum_upstairs_hallway
+          {% elif is_state('input_select.vacuum_room', 'Upstairs bathroom') %}
+             script.vacuum_upstairs_bathroom
+          {% elif is_state('input_select.vacuum_room', "Upstairs office") %}
+             script.vacuum_upstairs_office
+          {% elif is_state('input_select.vacuum_room', 'Entire 1st floor') %}
+             script.vacuum_downstairs
+          {% elif is_state('input_select.vacuum_room', 'Entire 2nd floor') %}
+             script.vacuum_upstairs
+          {% else %}
+           none
+         {% endif %}
+   - service: input_select.select_option
+     data:
+       entity_id: input_select.vacuum_room
+       option: "-"   

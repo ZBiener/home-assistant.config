@@ -1,0 +1,55 @@
+
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+http:
+  base_url: !secret base_url
+  ssl_certificate: /ssl/fullchain.pem
+  ssl_key: /ssl/privkey.pem
+
+homeassistant:
+  customize: !include customize.yaml
+  packages: !include_dir_named packages
+
+lovelace:
+  mode: yaml
+
+python_script:
+mqtt:
+  broker: !secret internal_ip
+  discovery: true
+  port: 1883
+  username: !secret mqtt_user
+  password: !secret mqtt_pass
+  client_id: mqtt_ha
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+sensor:
+  - platform: time_date
+    display_options:
+      - 'time'
+      - 'date'
+      - 'date_time'
+      - 'time_date'
+
+zone:
+  - name: UC
+    latitude: 39.1315674
+    longitude: -84.5189109
+    radius: 250
+    icon: mdi:pillar
+    # This will override the default home zone
+  - name: Home
+    latitude:  !secret home_latitude
+    longitude: !secret home_longitude
+    radius: 40
+    icon: mdi:account-multiple
+
+device_tracker: !include device_tracker.yaml
+group: !include groups.yaml
+automation: !include automations.yaml
+#script: !include scripts.yaml
+#scene: !include scenes.yaml

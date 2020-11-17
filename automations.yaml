@@ -1,0 +1,102 @@
+- id: noonehome
+  alias: When everybody leaves the house...
+  trigger:
+  - platform: state
+    entity_id: person.zvi
+    to: not_home
+    from: home
+  - platform: state
+    entity_id: person.kate
+    to: not_home
+    from: home
+  condition:
+  - condition: state
+    entity_id: person.kate
+    state: not_home
+  - condition: state
+    entity_id: person.zvi
+    state: not_home
+  action:
+  - service: notify.notify
+    data:
+      message: Everyone has left the house
+  - service: script.turn_on
+    entity_id: script.vacuum_entire_upstairs_unless_vacuumed_recently
+  - service: script.turn_on
+    entity_id: script.vacuum_entire_downstairs_unless_vacuumed_recently
+    data: {}
+  - service: script.turn_on
+    data:
+      entity_id: script.notify_if_garage_door_is_open
+  - service: input_boolean.turn_on
+    data: {}
+    entity_id: input_boolean.alarm_when_away
+  initial_state: true
+  mode: single
+- id: nighttime_checks
+  alias: At night, check whether...
+  initial_state: true
+  trigger:
+  - platform: template
+    value_template: '{{ states(''sensor.time'') == ''21:30'' }}'
+  condition:
+  action:
+  - service: script.turn_on
+    entity_id: script.notify_if_garage_door_is_open
+- id: ifft
+  alias: IFFT Webhook
+  trigger:
+    platform: event
+    event_type: ifttt_webhook_received
+    event_data:
+      action: call_service
+  action:
+    service_template: '{{ trigger.event.data.service }}'
+    data_template:
+      entity_id: '{{ trigger.event.data.entity_id }}'
+- id: ipadBatt
+  alias: iPad battery check
+  trigger:
+    platform: time_pattern
+    hours: '10'
+    minutes: /15
+  condition:
+    condition: numeric_state
+    entity_id: sensor.ipad_zb_battery_level
+    below: 20
+  action:
+    service: notify.notify
+    data:
+      message: iPad battery low. Please recharge.
+- id: '1605542399271'
+  alias: when zvi leaves the house
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: person.zvi
+    to: not_home
+  condition:
+  - condition: state
+    entity_id: device_tracker.keys
+    state: home
+  action:
+  - service: notify.mobile_app_zvis_iphone
+    data:
+      message: Where are your keys?
+  mode: single
+- id: '1605569647970'
+  alias: when anyone returns home
+  description: ''
+  trigger:
+  - platform: state
+    entity_id: person.zvi
+    to: home
+  - platform: state
+    entity_id: person.kate
+    to: home
+  condition: []
+  action:
+  - service: input_boolean.turn_off
+    data: {}
+    entity_id: input_boolean.alarm_when_away
+  mode: single

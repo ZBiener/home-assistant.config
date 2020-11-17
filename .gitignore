@@ -1,0 +1,16 @@
+.DS_Store
+.HA_VERSION
+.homekit.state
+secrets.yaml
+groups.yaml
+person.yaml
+known_devices.yaml
+home-assistant*
+customize.yaml
+custom_components
+device_tracker.yaml
+www
+.storage
+.config
+._*
+
