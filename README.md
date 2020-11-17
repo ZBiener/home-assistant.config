@@ -28,5 +28,5 @@ The config depends on:
   + loveland home feed card
 
 
-![Home Assistant GUI](http://zbiener.github.io/images/vacuum0.jpg | width=65% )
-![Vacuum GUI3](http://zbiener.github.io//images/vacuum3.jpg | width="35%" )
+![Home Assistant GUI](http://zbiener.github.io/images/vacuum0.jpg | width=65 )
+![Vacuum GUI3](http://zbiener.github.io//images/vacuum3.jpg | width=35 )
