@@ -77,7 +77,7 @@
     to: not_home
   condition:
   - condition: state
-    entity_id: device_tracker.keys
+    entity_id: device_tracker.zvis_keys
     state: home
   action:
   - service: notify.mobile_app_zvis_iphone
